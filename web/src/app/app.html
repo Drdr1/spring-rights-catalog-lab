@@ -1,0 +1,11 @@
+<header>
+  <h1>Rights Catalog</h1>
+  <nav>
+    <a routerLink="/titles" routerLinkActive="active">Titles</a>
+    <a routerLink="/availability" routerLinkActive="active">Availability</a>
+  </nav>
+  <span class="user">{{ auth.username() }} <button type="button" (click)="auth.logout()">Sign out</button></span>
+</header>
+<main>
+  <router-outlet />
+</main>

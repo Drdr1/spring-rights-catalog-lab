@@ -1,0 +1,51 @@
+# Local run: docker compose up --build, then open http://localhost:4200
+# Demo users (local only): viewer/viewer, editor/editor, manager/manager
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: rights
+      POSTGRES_USER: rights
+      POSTGRES_PASSWORD: rights
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rights -d rights"]
+      interval: 5s
+      retries: 20
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      # Tokens carry this issuer whether they are requested by the browser or checked by the API.
+      KC_HOSTNAME: http://localhost:8081
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+    volumes:
+      - ./keycloak/rights-realm.json:/opt/keycloak/data/import/rights-realm.json:ro
+    ports:
+      - "8081:8080"
+
+  api:
+    build: ./api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/rights
+      DB_USER: rights
+      DB_PASSWORD: rights
+      # Keys are fetched inside the network; the issuer claim is checked against the public URL.
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/rights/protocol/openid-connect/certs
+      KEYCLOAK_ISSUER: http://localhost:8081/realms/rights
+      CORS_ORIGIN: http://localhost:4200
+    ports:
+      - "8080:8080"
+
+  web:
+    build: ./web
+    depends_on: [api]
+    ports:
+      - "4200:80"

@@ -1,0 +1,31 @@
+spring:
+  application:
+    name: rights-catalog-api
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/rights}
+    username: ${DB_USER:rights}
+    password: ${DB_PASSWORD:rights}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER:http://localhost:8081/realms/rights}
+
+rights:
+  cors-origin: ${CORS_ORIGIN:http://localhost:4200}
+  metadata:
+    base-url: ${METADATA_BASE_URL:http://localhost:9090}
+    connect-timeout: 2s
+    read-timeout: 3s
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
