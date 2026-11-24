@@ -4,7 +4,7 @@ Both fixes follow the same rule: keep the indexed column bare in the `WHERE` cla
 the planner an index whose leading columns match the equality filters.
 
 `api/src/test/java/dev/derops/rights/QueryPlanIT.java` checks both on real PostgreSQL 16 with
-20,000 titles and 80,000 license windows. It runs `EXPLAIN` on the exact SQL constants the
+200,000 titles and 80,000 license windows. It runs `EXPLAIN` on the exact SQL constants the
 application uses and asserts which index the plan picks. The old versions are tested too,
 and must still show a sequential scan, so the test proves the change made the difference.
 

@@ -37,7 +37,7 @@ even under concurrent requests. Both are tested.
 
 [docs/query-tuning.md](docs/query-tuning.md) walks through the two slow queries and their fixes:
 a trigram GIN index for substring title search, and a composite index for availability.
-`QueryPlanIT` runs `EXPLAIN` on 20,000 titles and 80,000 windows, and asserts that the new
+`QueryPlanIT` runs `EXPLAIN` on 200,000 titles and 80,000 windows, and asserts that the new
 queries use their indexes and that the old versions did not.
 
 ## Run it

@@ -11,7 +11,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * Proves the two tuned queries are served by their indexes on realistic data volumes.
+ * Proves the two tuned queries are served by their indexes on realistic data volumes
+ * (200,000 titles, 80,000 license windows).
  * EXPLAIN runs on the exact SQL constants the application uses, with literal values
  * substituted for the named parameters.
  */
@@ -23,11 +24,12 @@ class QueryPlanIT extends PostgresTestBase {
     @BeforeAll
     void seed() {
         db.execute("TRUNCATE license_window, title RESTART IDENTITY CASCADE");
-        // 20,000 titles plus one we will search for.
+        // 200,000 titles (a realistic catalog size; on a tiny table a full scan is cheaper
+        // than any index, so the planner would rightly ignore it) plus one we search for.
         db.execute("""
                 INSERT INTO title (name, kind, release_year)
-                SELECT 'Catalog Title ' || lpad(g::text, 5, '0'), 'FILM', 1990 + (g % 35)
-                FROM generate_series(1, 20000) g
+                SELECT 'Catalog Title ' || md5(g::text), 'FILM', 1990 + (g % 35)
+                FROM generate_series(1, 200000) g
                 """);
         db.execute("INSERT INTO title (name, kind) VALUES ('The Marigold Affair', 'FILM')");
         // 80,000 windows across 40 territories x 4 platforms, spread over ten years.
@@ -54,13 +56,15 @@ class QueryPlanIT extends PostgresTestBase {
         String sql = TitleQueries.SEARCH_SQL
                 .replace(":term", "'marigold'")
                 .replace(":limit", "25");
-        assertThat(plan(sql)).contains("ix_title_name_trgm");
+        String plan = plan(sql);
+        assertThat(plan).as(plan).contains("ix_title_name_trgm");
     }
 
     @Test
     void the_old_title_search_could_not_use_any_index() {
         String old = "SELECT id, name FROM title WHERE lower(name) LIKE lower('%marigold%') ORDER BY name LIMIT 25";
-        assertThat(plan(old)).contains("Seq Scan on title").doesNotContain("ix_title_name_trgm");
+        String plan = plan(old);
+        assertThat(plan).as(plan).contains("Seq Scan on title").doesNotContain("ix_title_name_trgm");
     }
 
     @Test
@@ -69,7 +73,8 @@ class QueryPlanIT extends PostgresTestBase {
                 .replace(":territory", "'AB'")
                 .replace(":platform", "'SVOD'")
                 .replace(":day", "DATE '2024-06-01'");
-        assertThat(plan(sql)).contains("ix_license_lookup");
+        String plan = plan(sql);
+        assertThat(plan).as(plan).contains("ix_license_lookup");
     }
 
     @Test
@@ -79,6 +84,7 @@ class QueryPlanIT extends PostgresTestBase {
                 WHERE upper(l.territory) = 'AB' AND lower(l.platform) = 'svod'
                   AND DATE '2024-06-01' BETWEEN l.start_date AND l.end_date
                 """;
-        assertThat(plan(old)).contains("Seq Scan on license_window").doesNotContain("ix_license_lookup");
+        String plan = plan(old);
+        assertThat(plan).as(plan).contains("Seq Scan on license_window").doesNotContain("ix_license_lookup");
     }
 }
